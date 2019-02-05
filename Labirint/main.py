@@ -17,11 +17,11 @@ def load_image(name, colorkey=None):
     except pygame.error as message:
         print('Cannot load image:', name)
         raise SystemExit(message)
-    image = image.convert_alpha()
     if colorkey is not None:
         if colorkey is -1:
             colorkey = image.get_at((0, 0))
         image.set_colorkey(colorkey)
+    image = image.convert_alpha()
     return image
 
 
@@ -182,11 +182,11 @@ class TileGroup(pygame.sprite.Group):
     pass
 
 
+hero_group = pygame.sprite.Group()
 all_sprites = HeroGroup()
 tiles_group = pygame.sprite.Group()
 camera = Camera()
-hero = Hero(all_sprites)
-tile = Tile(generate_level(load_level()), 10, 10)
+hero, n, m = generate_level(load_level())
 running = True
 while running:
     for event in pygame.event.get():
@@ -211,9 +211,9 @@ while running:
         camera.apply(sprite)
     x += v / fps
     clock.tick(fps)
-    all_sprites.update()
-    all_sprites.draw(screen)
+    all_sprites.update()   
     tiles_group.draw(screen)
+    hero_group.draw(screen)
     pygame.display.flip()
 
 pygame.quit()
