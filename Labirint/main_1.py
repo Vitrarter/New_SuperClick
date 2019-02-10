@@ -9,8 +9,6 @@ v = 30  # пикселей в секунду
 fps = 60
 clock = pygame.time.Clock()
 d = False
-pos_x = 500
-pos_y = 500
 
 
 def load_image(name, colorkey=None):
@@ -37,7 +35,10 @@ tile_width = tile_height = 400
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
-        super().__init__(tiles_group, all_sprites)
+        if tile_type == 'wall':
+            super().__init__(wall_group, tiles_group, all_sprites)
+        else:
+            super().__init__(tiles_group, all_sprites)
         self.image = tile_images[tile_type]
         self.rect = self.image.get_rect().move(
             tile_width * pos_x, tile_height * pos_y)
@@ -61,14 +62,12 @@ def generate_level(level):
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == '.':
-                tl = Tile('empty', x, y)
+                Tile('empty', x, y)
             elif level[y][x] == '#':
-                tl = Tile('wall', x, y)
-                entities.add(tl)
-                platforms.append(tl)
+                Tile('wall', x, y)
             elif level[y][x] == '@':
-                tl = Tile('empty', x, y)
-                new_hero = Hero(1000, 1000)
+                Tile('empty', x, y)
+                new_hero = Hero(x, y)
     # вернем игрока, а также размер поля в клетках
     return new_hero, x, y
 
@@ -96,67 +95,79 @@ class Hero(pygame.sprite.Sprite):
     image_hero_s = load_image("bomb.png")
     image_hero_attack = load_image("boom.png")
 
-    def __init__(self, pos_x, pos_y):
+    def __init__(self, pos_x=0, pos_y=0):
         super().__init__(hero_group, all_sprites)
         self.image = Hero.image_hero_d
         self.rect = self.image.get_rect()
-        self.rect.x = 500
-        self.rect.y = 500
-        self.tr = False
-        self.wall = True
-        self.x = 0
-        self.y = 0
+        self.start_x = tile_width * pos_x
+        self.start_y = tile_height * pos_y
+        self.rect.x = self.start_x
+        self.rect.y = self.start_y
+        # self.tr = False
+        # self.wall = True
+        # self.x = p_x
+        # self.y = p_y
+        self.dx = 0
+        self.dy = 0
         self.smash_x = 0
         self.smash_y = 0
 
     def update(self):
-        if self.tr and self.wall:
-            self.rect = self.rect.move(self.x, self.y)
-            Hero.collide(self, event)
-        elif not self.wall and self.tr:
-            for hero in platforms:
-                if not pygame.sprite.collide_rect(self, hero):
-                    self.rect = self.rect.move(self.smash_x, self.smash_y)
-                    Hero.process_event_stop(self, event)
-                    self.wall = True
+        # if self.tr and self.wall:
+        #     self.rect = self.rect.move(self.x, self.y)
+        #     Hero.collide(self, event)
+        # elif not self.wall and self.tr:
+        self.rect = self.rect.move(self.smash_x, self.smash_y)
+        if self.collide():
+            self.process_event_stop()
+            self.smash_x = self.smash_y = 0
+        else:
+            self.dx += self.smash_x
+            self.dy += self.smash_y
 
-    def collide(self, event):
-        for hero in platforms:
-            if pygame.sprite.collide_rect(self, hero):
-                if self.x != 0 or self.y != 0:
-                    self.smash_x = -self.x
-                    self.smash_y = -self.y
-                self.wall = False
-                Hero.process_event_stop(self, event)
+    def collide(self):
+        for tile in wall_group:
+            if pygame.sprite.collide_rect(self, tile):
+                return True
+        return False
+
+    def process_event_stop(self):
+        # self.tr = False
+        self.rect.x -= self.dx
+        self.rect.y -= self.dy
+        self.dx = self.dy = 0
 
     def process_event_w(self, event):
-        for hero in platforms:
-            if not pygame.sprite.collide_rect(self, hero):
-                self.tr = True
-                self.y = -10
-                self.image = Hero.image_hero_w
-            if pygame.sprite.collide_rect(self, hero):
-                Hero.process_event_stop(self, event)
-
-    def process_event_stop(self, event):
-        self.tr = False
-        self.x = 0
-        self.y = 0
+        # self.tr = True
+        if event.type == pygame.KEYDOWN:
+            self.smash_y += -10
+            self.image = Hero.image_hero_w
+        else:
+            self.smash_y -= -10
 
     def process_event_s(self, event):
-        self.tr = True
-        self.y = 10
-        self.image = Hero.image_hero_s
+        # self.tr = True
+        if event.type == pygame.KEYDOWN:
+            self.smash_y += 10
+            self.image = Hero.image_hero_s
+        else:
+            self.smash_y -= 10
 
     def process_event_d(self, event):
-        self.tr = True
-        self.x = 10
-        self.image = Hero.image_hero_d
+        # self.tr = True
+        if event.type == pygame.KEYDOWN:
+            self.smash_x += 10
+            self.image = Hero.image_hero_d
+        else:
+            self.smash_x -= 10
 
     def process_event_a(self, event):
-        self.tr = True
-        self.x = -10
-        self.image = Hero.image_hero_a
+        # self.tr = True
+        if event.type == pygame.KEYDOWN:
+            self.smash_x += -10
+            self.image = Hero.image_hero_a
+        else:
+            self.smash_x -= -10
 
     def process_event_attack(self, event):
         self.image = Hero.image_hero_attack
@@ -177,10 +188,10 @@ class HeroGroup(pygame.sprite.Group):
             except Exception:
                 pass
 
-    def process_event_stop(self, event):
+    def process_event_stop(self):
         for sprite in self.sprites():
             try:
-                sprite.process_event_stop(event)
+                sprite.process_event_stop()
             except Exception:
                 pass
 
@@ -217,14 +228,14 @@ class TileGroup(pygame.sprite.Group):
     pass
 
 
-entities = pygame.sprite.Group()
-platforms = []
-hero_group = pygame.sprite.Group()
-all_sprites = HeroGroup()
-tiles_group = pygame.sprite.Group()
+# platforms = []
+all_sprites = pygame.sprite.Group()
+hero_group = HeroGroup()
+tiles_group = TileGroup()
+wall_group = TileGroup()
+
 camera = Camera()
 hero, n, m = generate_level(load_level())
-entities.add(hero)
 
 running = True
 while running:
@@ -233,30 +244,38 @@ while running:
             running = False
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_w:
-                all_sprites.collide(event)
-                all_sprites.process_event_w(event)
+                hero_group.process_event_w(event)
             elif event.key == pygame.K_s:
-                all_sprites.collide(event)
-                all_sprites.process_event_s(event)
+                hero_group.process_event_s(event)
             elif event.key == pygame.K_d:
-                all_sprites.collide(event)
-                all_sprites.process_event_d(event)
+                hero_group.process_event_d(event)
             elif event.key == pygame.K_a:
-                all_sprites.collide(event)
-                all_sprites.process_event_a(event)
+                hero_group.process_event_a(event)
+        elif event.type == pygame.KEYUP:
+            if event.key == pygame.K_w:
+                hero_group.process_event_w(event)
+            elif event.key == pygame.K_s:
+                hero_group.process_event_s(event)
+            elif event.key == pygame.K_d:
+                hero_group.process_event_d(event)
+            elif event.key == pygame.K_a:
+                hero_group.process_event_a(event)
         elif event.type == pygame.MOUSEBUTTONUP:
-            all_sprites.process_event_attack(event)
-        else:
-            all_sprites.process_event_stop(event)
+            hero_group.process_event_attack(event)
+        # else:
+        #     hero_group.process_event_stop(event)
     screen.fill((255, 255, 255))
+    print(hero.start_x, hero.start_y)
+    print(hero.rect.x, hero.rect.y)
+    all_sprites.update()
+    print(hero.rect.x, hero.rect.y)
     camera.update(hero)
+    print(hero.rect.x, hero.rect.y)
     for sprite in all_sprites:
         camera.apply(sprite)
-    x += v / fps
-    clock.tick(fps)
-    all_sprites.update()
+    print(hero.rect.x, hero.rect.y)
     tiles_group.draw(screen)
     hero_group.draw(screen)
     pygame.display.flip()
-
+    clock.tick(fps)
 pygame.quit()
