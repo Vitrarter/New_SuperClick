@@ -2,9 +2,6 @@ import os
 import random
 import pygame
 
-size = width, height = 400, 300
-screen = pygame.display.set_mode(size)
-pygame.init()
 
 def load_image(name, colorkey=None):
     fullname = os.path.join('data', name)
@@ -58,40 +55,19 @@ class Border(pygame.sprite.Sprite):
 
 
 class Missile(pygame.sprite.Sprite):
-    mimage = load_image('bomb.png')
-
-    def __init__(self, group, pos):
-        pygame.sprite.Sprite.__init__(self, group, all_sprites)
-        self.image = Missile.mimage
+    def __init__(self, pos, image, vel):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = image
         self.rect = self.image.get_rect()
         self.pos = pos
         self.rect.center = self.pos
+        self.vel = vel
 
     def update(self):
-        for x in pygame.sprite.spritecollide(self, ball_sprite, True):
-            print(x)
-            score.inc()
-
-class Score(pygame.sprite.Sprite):
-    def __init__(self):
-        pygame.sprite.Sprite.__init__(self, all_sprites)
-        self.score = 0
-        self.font = pygame.font.Font(None, 50)
-        text = self.font.render(str(self.score), 1, (100, 255, 100))
-        self.image = text
-        self.rect = self.image.get_rect()
-        self.pos = 370, 30
-        self.rect.center = self.pos
-
-    def inc(self):
-        self.score += 1
-
-    def update(self):
-        text = self.font.render(str(self.score), 1, (100, 255, 100))
-        self.image = text
-        self.rect = self.image.get_rect()
-        self.pos = 370, 30
-        self.rect.center = self.pos
+        self.pos[0] += self.vel[0]
+        self.pos[1] += self.vel[1]
+        self.rect.centerx = int(self.pos[0])
+        self.rect.centery = int(self.pos[1])
 
 
 # группа, содержащая все спрайты
@@ -102,8 +78,8 @@ arrow_sprite = pygame.sprite.Group()
 horizontal_borders = pygame.sprite.Group()
 vertical_borders = pygame.sprite.Group()
 
-sp = pygame.sprite.Group()
-score = Score()
+size = width, height = 400, 300
+screen = pygame.display.set_mode(size)
 
 Border(5, 5, width - 5, 5)
 Border(5, height - 5, width - 5, height - 5)
@@ -122,8 +98,6 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            missile = Missile(sp, event.pos)
     screen.fill(pygame.Color("white"))
     all_sprites.draw(screen)
     all_sprites.update()
